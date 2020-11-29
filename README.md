@@ -2,6 +2,15 @@
 This directory is composed of two other directories: `ansible/` and `vagrant/`.
 The goal of this configuration was to incorporate *Vagrant* and *Docker* with an *Ansible* configuration on 3 virtual machines. **VM1** is setup to have NAT and Host-only interfaces, **VM2** and **VM3** are setup to have Host-only interfaces (*VirtualBox*). **VM1** will have SSH listening on port 4452, DNS, UFW with the correct allowed connections, and finally NFS to share files to **VM2** and **VM3**.
 <br/>
+<br/>
+<br/>
+<br/>
+
+![Small Network](https://github.com/jtorres-dev/vagrant-docker-ansible-automation/blob/master/Network.png)
+<br/>
+<br/>
+<br/>
+<br/>
 
 ### Vagrant ###
 *Vagrant* creates **VM1**, **VM2**, and **VM3**. All the VMs are updated, installed with dependencies, and creates **VM1** with SSH listening on port 4452. **VM1** has an *Ansible* *Docker* container built into the machine during the first provision.
