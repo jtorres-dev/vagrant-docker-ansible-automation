@@ -1,0 +1,17 @@
+---
+vm1_ip: 192.168.56.102
+vm2_ip: 192.168.56.103
+vm3_ip: 192.168.56.104
+
+mask: 192.168.56
+rev_mask: 56.168.192
+
+rev_vm1_subnet: 102
+rev_vm2_subnet: 103
+rev_vm3_subnet: 104
+
+commented_fwd: #net.ipv4.ip_forward=1
+enable_packet_fwd: net.ipv4.ip_forward=1
+
+nat_if: eth0
+host_only_if: eth1

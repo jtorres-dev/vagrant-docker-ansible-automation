@@ -1,0 +1,49 @@
+---
+- name: Running iptable commands on VM1
+  hosts: vm1
+  become_user: root
+  remote_user: vagrant
+  gather_facts: true
+  
+  vars_files:
+    - ./vars.yml
+  
+  tasks:
+    - name: Postroute packets to exit nat interface
+      iptables:
+        table: nat
+        chain: POSTROUTING
+        out_interface: "{{nat_if}}"
+        jump: MASQUERADE
+      become: yes
+
+    - name: Allow related and established connections
+      iptables:
+        chain: FORWARD
+        in_interface: "{{nat_if}}"
+        out_interface: "{{host_only_if}}"
+        ctstate: ESTABLISHED,RELATED
+        jump: ACCEPT
+      become: yes
+     
+    - name: from host-only interface to nat interface
+      iptables:
+        chain: FORWARD
+        in_interface: "{{host_only_if}}"
+        out_interface: "{{nat_if}}"
+        jump: ACCEPT
+      become: yes
+
+    - name: Enabling ip_forward
+      shell: |
+        echo 1 > /proc/sys/net/ipv4/ip_forward
+        # uncomments ipv4 packet forwarding line
+        sed "28a\
+        {{enable_packet_fwd}}" /etc/sysctl.conf > temp.conf
+        sed -i "/{{commented_fwd}}/d" temp.conf
+        mv temp.conf /etc/sysctl.conf
+      become: yes
+
+    - name: Saving iptable changes
+      shell: iptables-save
+      become: yes

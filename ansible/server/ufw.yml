@@ -1,0 +1,38 @@
+---
+- name: Setting up UFW
+  hosts: vm1 
+  become_user: root
+  remote_user: vagrant
+  gather_facts: true
+
+  vars_files:
+    - ./vars.yml
+  
+  tasks:
+    - name: Enabling UFW
+      ufw:
+        state: enabled
+      become: yes
+      
+    - name: Allowing ssh connection from port 4452
+      ufw:
+        rule: allow
+        name: OpenSSH
+        port: '22'
+      become: yes
+          
+    - name: Allowing connections to DNS
+      ufw:
+        rule: allow
+        port: '53'
+      become: yes
+    
+    - name: Allowing connections from VM1, VM2, and VM3
+      ufw:
+        rule: allow
+        src: "{{ item }}"
+      loop:
+        - "{{ vm1_ip }}" 
+        - "{{ vm2_ip }}"
+        - "{{ vm3_ip }}"
+      become: yes

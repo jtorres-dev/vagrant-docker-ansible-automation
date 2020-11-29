@@ -1,0 +1,95 @@
+Vagrant.configure("2") do |config|
+
+  vms = [
+    {
+      :hostname => "vm1",
+      :box => "ubuntu/focal64",
+      :ip => "192.168.56.102",
+    },
+    {
+      :hostname => "vm2",
+      :box => "ubuntu/focal64",
+      :ip => "192.168.56.103",
+    },
+    {
+      :hostname => "vm3",
+      :box => "ubuntu/focal64",
+      :ip => "192.168.56.104",
+    }
+  ]
+
+  config.vm.define "vm1" do |node|
+    node.vm.provider "virtualbox" do |vb|
+      vb.memory = "2048"
+    end
+  end
+  
+  config.vm.define "vm2" do |node|
+    node.vm.provider "virtualbox" do |vb|
+      vb.memory = "1024"
+    end
+  end
+
+  config.vm.define "vm3" do |node|
+    node.vm.provider "virtualbox" do |vb|
+      vb.memory = "1024"
+    end
+  end
+
+  vms.each do |machine|
+    config.vm.define machine[:hostname] do |node|
+      node.vm.hostname = machine[:hostname]
+      node.vm.box = machine[:box]
+      node.vm.network "private_network", ip: machine[:ip]
+      
+##########################################################################################
+#      After running once, Uncomment below and run `vagrant reload vm1 --provision`.     #
+#                                                                                        #
+#      The first provision rewrites the /etc/ssh/sshd_config file and changes the        #
+#      port to be 4452. Vagrant needs a port forward to successfully connect to          #
+#      vm1                                                                               #
+#========================================================================================#
+      # if machine[:hostname] == "vm1"
+      #   node.vm.network "forwarded_port", guest: 4452, host: 4452, id: "ssh"
+       #  node.ssh.guest_port = 4452
+      # end
+##########################################################################################
+    end
+  end
+
+  config.vm.define "vm1" do |node|
+    # updates and installs dependencies
+    node.vm.provision :shell, path: "build_server.sh"
+  node.vm.synced_folder "../ansible", "/ansible"
+    node.vm.provision "docker" do |d|
+      d.build_image "/ansible/.", args: "-t ansible:latest"
+  end
+
+    # custom sshd_config from ubuntu/trusty64. Has to be replaced since default sshd_config 
+    # ubuntu/focal64  did not allow ssh connections between the vms.
+    node.vm.provision "file", source: "sshd_config_server", destination: "/etc/ssh/sshd_config"
+    node.vm.provision :shell,
+      inline: "chmod 755 /etc/ssh && chmod 644 /etc/ssh/sshd_config && systemctl restart sshd.service"
+  end
+
+  config.vm.define "vm2" do |node|
+    node.vm.provision :shell, path: "build_client.sh"
+  
+  # custom sshd_config from ubuntu/trusty64. Has to be replaced since default sshd_config 
+    # ubuntu/focal64  did not allow ssh connections between the vms.
+    node.vm.provision "file", source: "sshd_config_client", destination: "/etc/ssh/sshd_config"
+    node.vm.provision :shell,
+      inline: "chmod 755 /etc/ssh && chmod 644 /etc/ssh/sshd_config && systemctl restart sshd.service"
+  end
+
+  config.vm.define "vm3" do |node|
+    node.vm.provision :shell, path: "build_client.sh"
+
+    # custom sshd_config from ubuntu/trusty64. Has to be replaced since default sshd_config 
+    # ubuntu/focal64  did not allow ssh connections between the vms.
+    node.vm.provision "file", source: "sshd_config_client", destination: "/etc/ssh/sshd_config"
+    node.vm.provision :shell, 
+      inline: "chmod 755 /etc/ssh && chmod 644 /etc/ssh/sshd_config && systemctl restart sshd.service"
+  end
+
+end

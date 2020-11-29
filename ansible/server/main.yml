@@ -1,0 +1,25 @@
+---
+- name: Setting up NAT, UFW, DNS, and NFS 
+  hosts: vm1
+  become_user: root
+  remote_user: vagrant
+
+- import_playbook: server/ssh.yml
+  become: yes
+  
+- import_playbook: server/iptables.yml
+  become: yes
+
+- import_playbook: server/ufw.yml
+  become: yes
+
+- import_playbook: server/dns.yml
+  become: yes
+
+- import_playbook: server/nfs.yml
+  become: yes
+
+- import_playbook: client/client-dns.yml
+  become: yes
+
+- import_playbook: client/client-nfs.yml

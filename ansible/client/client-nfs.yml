@@ -1,0 +1,38 @@
+---
+- hosts: vm2 vm3
+  remote_user: vagrant
+  become_user: root
+  gather_facts: true
+
+  vars_files:
+    - ../server/vars.yml
+
+  tasks:
+    - name: Setting up NFS
+      shell: showmount -e {{ vm1_ip }}
+      become: yes
+  
+    - name: Creating public directory
+      file: path=/mnt/public state=directory mode=777 owner=root group=root
+      become: yes
+
+    - name: Creating clipboard directory
+      file: path=/mnt/clipboard state=directory mode=777 owner=root group=root
+      become: yes
+
+    - name: Mounting and setting mount point permanantly for public directory
+      mount:
+        path: /mnt/public
+        src: "{{ vm1_ip }}:/public"
+        fstype: nfs
+        state: mounted
+      become: yes
+
+    - name: Setting mount point permanantly for clipboard directory
+      mount:
+        path: /mnt/clipboard
+        src: "{{ vm1_ip }}:/clipboard"
+        fstype: nfs
+        state: present
+      become: yes
+

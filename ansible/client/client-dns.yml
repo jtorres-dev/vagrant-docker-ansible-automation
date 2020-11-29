@@ -1,0 +1,26 @@
+---
+- hosts: vm2 vm3
+  remote_user: vagrant
+  become_user: root
+  gather_facts: true
+
+  vars_files:
+    - ../server/vars.yml
+
+  tasks:
+    - name: Adding 8.8.8.8 to /etc/resolv.conf
+      lineinfile:
+        path: /etc/resolv.conf
+        line: nameserver 8.8.8.8
+      become: yes
+   
+    - name: Adding VM1 as a nameserver
+      lineinfile:
+        path: /etc/resolv.conf
+        line: nameserver {{ vm1_ip }}
+      become: yes
+    
+    - name: Adding default gateway to VM1_IP from VM2 and VM3
+      shell: route add default gw {{ vm1_ip }}
+      become: yes   
+

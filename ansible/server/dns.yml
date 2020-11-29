@@ -1,0 +1,138 @@
+---
+- hosts: ns 
+  become_user: root
+  remote_user: vagrant
+  gather_facts: true
+  
+  vars_files:
+    - ./vars.yml
+
+  tasks:
+    - name: Setting BIND to IPv4 mode
+      copy:
+        dest: "/etc/default/bind9"
+        content: |
+          # run resolvconf?
+          RESOLVCONF=no
+          
+          # startup options for the server
+          OPTIONS="-4 -u bind"
+      become: yes
+          
+    - name: Configuring the DNS server
+      copy:
+        dest: "/etc/bind/named.conf.options"
+        content: |
+          acl "trusted" {
+                {{ vm1_ip }};
+                {{ vm2_ip }};
+                {{ vm3_ip }};
+          };
+           
+          options {
+                directory "/var/cache/bind";
+
+                recursion yes;
+                allow-recursion { trusted; };
+                listen-on { {{ vm1_ip }}; };
+                allow-transfer { none; };
+
+                forwarders {
+                       8.8.8.8;
+                       8.8.4.4;
+                };
+          };
+      become: yes
+
+    - name: Adding the forward zone to /etc/bind/named.conf.local
+      copy:
+        dest: "/etc/bind/named.conf.local"
+        content: |
+          zone "lab2.csci" {
+                type master;
+                file "/etc/bind/zones/db.lab2.csci";
+          };
+          
+          zone "{{ rev_mask }}.in-addr.arpa" {
+                type master;
+                file "/etc/bind/zones/db.{{ mask }}";	
+          };
+      become: yes
+          
+    - name: Creating zone directory
+      file:
+        path: /etc/bind/zones
+        state: directory
+      become: yes
+
+    - name: Creating the forward zone file
+      copy:
+        dest: "/etc/bind/zones/db.lab2.csci"
+        content: |
+          $TTL    604800
+          @       IN      SOA     localhost. ns.lab2.csci. (
+                            3       ; Serial
+                       604800       ; Refresh
+                        86400       ; Retry
+                      2419200       ; Expire
+                       604800 )     ; Negative Cache TTL
+          ;
+          ; name servers - NS records
+             IN      NS      ns.lab2.csci.
+             IN      NS      nfs.lab2.csci.
+             IN      NS      vm1.lab2.csci.
+             IN      NS      vm2.lab2.csci.             
+             IN      NS      vm3.lab2.csci.
+
+          ; name servers - A records
+          ns.lab2.csci.           IN      A       {{ vm1_ip }}
+          
+          ; nfs server
+          nfs.lab2.csci.          IN      A       {{ vm1_ip }}
+          
+          ; vm servers
+          vm1.lab2.csci.          IN      A       {{ vm1_ip }}
+          vm2.lab2.csci.          IN      A       {{ vm2_ip }}
+          vm3.lab2.csci.          IN      A       {{ vm3_ip }}
+      become: yes
+
+    - name: Creating the reverse zone file
+      copy:
+        dest: "/etc/bind/zones/db.{{ mask }}"
+        content: |
+          $TTL    604800
+          @       IN      SOA     localhost. ns.lab2.csci. (
+                            3       ; Serial
+                       604800       ; Refresh
+                        86400       ; Retry
+                      2419200       ; Expire
+                       604800 )     ; Negative Cache TTL
+          ;
+          ; name servers - NS records
+             IN      NS      ns.lab2.csci.
+             IN      NS      nfs.lab2.csci.
+             IN      NS      vm1.lab2.csci.
+             IN      NS      vm2.lab2.csci.             
+             IN      NS      vm3.lab2.csci.
+
+          ; PTR records
+          {{ rev_vm1_subnet }} IN     PTR     ns.lab2.csci.  ; {{ vm1_ip }}
+          {{ rev_vm1_subnet }} IN     PTR     nfs.lab2.csci. ; {{ vm1_ip }}
+          {{ rev_vm1_subnet }} IN     PTR     vm1.lab2.csci. ; {{ vm1_ip }}
+          {{ rev_vm2_subnet }} IN     PTR     vm2.lab2.csci. ; {{ vm2_ip }}
+          {{ rev_vm3_subnet }} IN     PTR     vm3.lab2.csci. ; {{ vm3_ip }}
+      become: yes
+
+    - name: Check DNS configuration and zones syntax
+      shell: |
+        #check syntax of config files
+        named-checkconf
+        named-checkzone lab2.csci /etc/bind/zones/db.lab2.csci
+        named-checkzone {{rev_mask}}.in-addr.arpa /etc/bind/zones/db.{{mask}}
+      become: yes
+
+    - name: Restarting bind9
+      service:
+        name: bind9
+        state: restarted
+      become: yes  

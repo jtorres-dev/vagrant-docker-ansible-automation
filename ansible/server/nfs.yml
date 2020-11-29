@@ -1,0 +1,30 @@
+---
+- hosts: nfs 
+  become_user: root
+  remote_user: vagrant
+  gather_facts: true
+
+  vars_files:
+    - ./vars.yml
+
+  tasks:
+    - name: Inserting filesystem configurations to /etc/exports
+      blockinfile:
+        path: /etc/exports
+        block: |
+          /public *(ro,sync,no_subtree_check)
+          /clipboard $vm2_ip(rw,sync,no_subtree_check)
+          /clipboard $vm3_ip(rw,sync,no_subtree_check)
+      become: yes
+
+    - name: Creating a public NFS directory
+      file: path=/public state=directory mode=744 owner=root group=root
+      become: yes
+
+    - name: Creating a clipboard NFS directory
+      file: path=/clipboard state=directory mode=766 owner=root group=root
+      become: yes
+    
+    - name: Restarting NFS server
+      service: name=nfs-kernel-server state=restarted
+      become: yes
